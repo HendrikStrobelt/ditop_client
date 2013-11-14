@@ -19,10 +19,10 @@ SORT_BY_GROUP = 1
 SORT_BY_DVALUE = 2
 SORT_BY_CVALUE = 3
 
-#fill = d3.scale.category10();
+fill = d3.scale.category10();
 #fill = d3.scale.ordinal().range(["#34CFBE","#FFDB40","#E339A4"])
 #fill = d3.scale.ordinal().range(["#0D77CE","#CE0D77","#77CE0D"])
-fill = d3.scale.ordinal().range(["#5cc9ff","#ff5cc9","#c9ff5c"])
+#fill = d3.scale.ordinal().range(["#5cc9ff","#ff5cc9","#c9ff5c"])
 zoomInstance = {}
 
 $("#showButton").click( ->
@@ -444,8 +444,10 @@ createPieBackground = ->
   g.append("path")
     .attr("d", arc)
     .style("fill",(d) ->
-      console.log d
-      fill(d.iname))
+      color = d3.rgb(fill(d.iname)).hsl()
+      color.l = .9
+      color
+    )
 
   g.attr
     "transform": "translate(500,500)"
