@@ -5,7 +5,11 @@ configurations = {}
 selectedSet = 0
 selectedTopicSize = 0
 cloudData = []
+
 svg = {}
+allClouds = {}
+allAnnotations = {}
+
 width = 1000
 height = 1000
 
@@ -78,6 +82,9 @@ $("#resetButton").click(->
     "stroke-width": 0.5
 
   createPieBackground()
+
+  allClouds = svg.append("g").attr("id","allClouds")
+  allAnnotations = svg.append("g").attr("id","allAnnotations")
 
   $.ajax
     url: serverURL,
@@ -251,7 +258,7 @@ sortAndUpdate = (method)->
 
 
 drawClouds = ->
-  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.groupName)
+  cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.groupName)
 
   #transform="translate(300,300) rotate(-60)"
   d3.transition(cdGroups)
@@ -274,16 +281,53 @@ drawClouds = ->
           else
             return 1
 
-  clouds.append("circle").classed("borderCircle",true)
-    .attr
-        cx: 0
-        cy: 0
-        r: (d) -> d.recommendedRadius *.8
-    .style
-        'fill':'none'
-        'stroke': "#666666"
-        'stroke-width': (d) -> 1+(d.disValue)*5
+#  clouds.append("circle").classed("borderCircle",true)
+#    .attr
+#        cx: 0
+#        cy: 0
+#        r: (d) -> d.recommendedRadius *.8
+#    .style
+#        'fill':'none'
+#
+#        'stroke': "#aaaaaa"
+#        'stroke-width': 1 #(d) -> 1+(d.disValue)*5
 
+
+  for sector in [0,2,4]
+    clouds.append("path")
+    .attr
+        "d": (d) ->
+          thickness = 1+ d.disValue*5*.5
+          thickness = 1 if isNaN(thickness)
+          arcLength = 1
+
+          console.log arcLength
+          d3.svg.arc()
+          .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness)
+          .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness)
+          .startAngle((sector+1-arcLength) * (Math.PI/3))
+          .endAngle((sector+1+arcLength) * (Math.PI/3))()
+    .style
+        'fill':'aaaaaa'
+        'stroke': "#ffffff"
+        'stroke-width': 1 #(d) -> 1+(d.disValue)*5
+
+#    clouds.append("path")
+#    .attr
+#        "d": (d) ->
+#          thickness = 1+ d.disValue*5*.5
+#          thickness = .9 if isNaN(thickness)
+#          arcLength = .25*(0.5 + d.characteristicValue * 1.5)
+#          arcLength = 0.1 if (isNaN(arcLength) || arcLength<.4)
+#          console.log arcLength
+#          d3.svg.arc()
+#          .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness-1)
+#          .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness+1)
+#          .startAngle((sector+1-arcLength) * (Math.PI/3))
+#          .endAngle((sector+1+arcLength) * (Math.PI/3))()
+#    .style
+#        'fill':'#aaaaaa'
+        'stroke': "none"
 #  clouds.append("path")
 #  .attr
 #      d: (d)->d.unionShape
@@ -317,9 +361,9 @@ drawClouds = ->
   set4Items = getBitIndices(4,cloudData)
 #
   console.log set1Items
-  addGroupItems(set1Items,"set1Items",-13, true)
+  addGroupItems(set1Items,"set1Items",2, true)
   addGroupItems(set2Items,"set2Items",0,true)
-  addGroupItems(set4Items,"set4Items",+13,true)
+  addGroupItems(set4Items,"set4Items",4,true)
 
 
 getBitIndices = (bitmask, cData) ->
@@ -333,8 +377,9 @@ moveGroupItems = (setItems, className, offsetX, cData) ->
   allItems = setVisItems.selectAll(".setItem").data(setItems, (d) -> d.name)
   allItems.transition()
     .attr
-        x: (d) -> cData[d.pos].centerPos.x+500+offsetX-5
-        y: (d) -> cData[d.pos].centerPos.y+500+cData[d.pos].recommendedRadius*.8+5
+#        x: (d) -> cData[d.pos].centerPos.x+500+offsetX-5
+#        y: (d) -> cData[d.pos].centerPos.y+500+cData[d.pos].recommendedRadius*.8+5
+        "transform":  (d) -> "translate("+(cData[d.pos].centerPos.x+500)+","+((cData[d.pos].centerPos.y+500))+")"
 
   bgRs = setVisItems.selectAll(".bgR").data(setItems, (d) -> d.name)
   bgRs.attr
@@ -346,8 +391,9 @@ moveGroupItemsDiscrete = (setItems, className, offsetX) ->
   allItems = setVisItems.selectAll(".setItem").data(setItems, (d) -> d.name)
   allItems.transition()
   .attr
-    x: (d) -> d.pos%slotsHorizontal*slotSize + offsetVisX+offsetX-5
-    y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY+cloudData[d.pos].recommendedRadius*.8+5)
+#    x: (d) -> d.pos%slotsHorizontal*slotSize + offsetVisX+offsetX-5
+#    y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY+cloudData[d.pos].recommendedRadius*.8+5)
+    "transform":  (d) -> "translate("+(d.pos%slotsHorizontal*slotSize + offsetVisX)+","+((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY)+")"
 
   bgRs = setVisItems.selectAll(".bgR").data(setItems, (d) -> d.name)
   bgRs.attr
@@ -355,12 +401,12 @@ moveGroupItemsDiscrete = (setItems, className, offsetX) ->
     y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize)-2+offsetVisY-bestRadius(d.pos)
 
 
-addGroupItems = (setItems, className, offsetX, clearAll = false) ->
+addGroupItems = (setItems, className, sector, clearAll = false) ->
 
 
-  setVisItems = svg.select("."+className)
+  setVisItems = allAnnotations.select("."+className)
   if setVisItems.empty()
-    setVisItems = svg.append("g").classed(className, true)
+    setVisItems = allAnnotations.append("g").classed(className, true)
   else if clearAll
     setVisItems.selectAll(".setItem").remove()
     setVisItems.selectAll(".bgR").remove()
@@ -368,24 +414,41 @@ addGroupItems = (setItems, className, offsetX, clearAll = false) ->
 
   allItems = setVisItems.selectAll(".setItem").data(setItems, (d) -> d.name)
   allItems.exit().remove()
-  allItems.transition()
-    .style
-      opacity:0
-    .transition().duration(2)
-      .attr
-        x: (d) -> d.pos%slotsHorizontal*slotSize + offsetVisX+offsetX-5
-        y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY+cloudData[d.pos].recommendedRadius*.8+5)
-    .transition().duration(500)
-      .style
-        opacity:1
+#  allItems.transition()
+#    .style
+#      opacity:0
+#    .transition().duration(2)
+#      .attr
+#        x: (d) -> d.pos%slotsHorizontal*slotSize + offsetVisX+offsetX-5
+#        y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY+cloudData[d.pos].recommendedRadius*.8+5)
+#    .transition().duration(500)
+#      .style
+#        opacity:1
 
 
-  allItems.enter().append("rect").classed("setItem",true)
+  allItems.enter().append("g").classed("setItem",true)
     .attr
-      x: (d) -> d.pos%slotsHorizontal*slotSize + offsetVisX+offsetX-5
-      y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY+cloudData[d.pos].recommendedRadius*.8+5)
-      width: 10
-      height: 10
+      "transform":  (d) -> "translate("+(d.pos%slotsHorizontal*slotSize + offsetVisX)+","+((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY)+")"
+    .append("path")
+    .attr
+      "d": (d) ->
+        thickness = 1+ cloudData[d.pos].disValue *5*.5
+        thickness = 1 if isNaN(thickness)
+        arcLength = .25*(0.5 + cloudData[d.pos].characteristicValue * 1.5)
+        arcLength = 0.1 if (isNaN(arcLength) || arcLength<.4)
+        console.log arcLength
+        d3.svg.arc()
+        .innerRadius(bestRadius(d.pos)-thickness-2)
+        .outerRadius(bestRadius(d.pos)+thickness+2)
+        .startAngle((sector+1-arcLength) * (Math.PI/3))
+        .endAngle((sector+1 +arcLength) * (Math.PI/3))()
+#      x: (d) -> d.pos%slotsHorizontal*slotSize + offsetVisX+offsetX-5
+#      y: (d) -> ((d.pos/slotsHorizontal >>0) *slotSize+offsetVisY+cloudData[d.pos].recommendedRadius*.8+5)
+#      width: 10
+#      height: 10
+
+
+
     .style
       'fill': fill(className)
     .on
@@ -422,8 +485,9 @@ addGroupItems = (setItems, className, offsetX, clearAll = false) ->
       'stroke-width': 3
       'opcacity': 0
 
-bestRadius = (pos) ->
-  cloudData[pos].recommendedRadius*.8
+bestRadius = (pos) -> bestRadiusScale cloudData[pos].recommendedRadius
+bestRadiusScale = (r) -> r*.8
+
 
 createPieBackground = ->
   arc = d3.svg.arc()
