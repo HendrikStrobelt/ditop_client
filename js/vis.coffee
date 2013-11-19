@@ -199,7 +199,7 @@ createLabels = (labelNamesSorted) ->
     "font-size":"10pt"
 
 updateDiTop = ->
-  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.groupName)
+  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
   cdGroups.transition().duration(1000)
     .attr("transform",(d,i) -> "translate("+(d.centerPos.x+500)+"," + (d.centerPos.y+500)+")")
 
@@ -236,7 +236,7 @@ sortAndUpdate = (method)->
       return 1 if test > 0
       return 0
     )
-  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.groupName)
+  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
 
 
   #transform="translate(300,300) rotate(-60)"
@@ -258,7 +258,7 @@ sortAndUpdate = (method)->
 
 
 drawClouds = ->
-  cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.groupName)
+  cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
 
   #transform="translate(300,300) rotate(-60)"
   d3.transition(cdGroups)
@@ -369,7 +369,7 @@ drawClouds = ->
 getBitIndices = (bitmask, cData) ->
   res = []
   for d,i in cData
-    res.push({name: d.groupName, pos:i}) if (d.inSetBitvector & bitmask)
+    res.push({name: d.topicName, pos:i}) if (d.inSetBitvector & bitmask)
   res
 
 moveGroupItems = (setItems, className, offsetX, cData) ->
