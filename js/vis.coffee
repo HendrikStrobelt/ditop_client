@@ -1,6 +1,6 @@
 
 serverURL = "http://localhost:8080/DiTopWeb/DiTopServlet"
-
+actualDataset = ""
 configurations = {}
 selectedSet = 0
 selectedTopicSize = 0
@@ -33,8 +33,15 @@ $("#showButton").click( ->
   svg.selectAll(".arc").transition().style("opacity",0)
   key = Object.keys(configurations)[selectedSet]
   topicSize = configurations[key][selectedTopicSize]
+  $("#workingSymbol").toggleClass("hidden")
   loadDataSet(key+"_"+topicSize)
 )
+
+$("#updateDValue").click( ->
+    $("#workingSymbol").toggleClass("hidden")
+    updateWithDValue($("#dThresh").val())
+)
+
 $("#sortButton").click(->
   svg.selectAll(".arc").transition().style("opacity",0)
   sortAndUpdate(SORT_BY_GROUP)
@@ -136,6 +143,7 @@ updateDataSet = ->
 
 loadDataSet = (datasetName)->
   console.log(datasetName)
+  actualDataset=datasetName
 #http://localhost:8080/DiTopWeb/DiTopServlet?dataset=New3000_40
   $.ajax
     url: serverURL,
@@ -150,7 +158,28 @@ loadDataSet = (datasetName)->
 
         createLabels(resData.setNamesSorted)
         console.log(cloudData)
+        $("#workingSymbol").toggleClass("hidden")
         drawClouds()
+
+updateWithDValue = (dValue) ->
+  $.ajax
+    url: serverURL,
+    data: "dataset="+actualDataset+"&dValue="+dValue,
+    dataType: 'jsonp',
+    jsonp: 'callback',
+    success: (resData) ->
+      if resData?
+        cloudData = []
+        for k,v of resData.termGroups
+          cloudData.push(v)
+
+        console.log(cloudData)
+        $("#workingSymbol").toggleClass("hidden")
+        updateDiTop()
+        createLabels(resData.setNamesSorted)
+
+
+
 
 createLabels = (labelNamesSorted) ->
   groupLabels = d3.select("#groupLabels")
@@ -179,12 +208,12 @@ createLabels = (labelNamesSorted) ->
       "fill": (d) -> fill(d.itemID)
   .on
       'mouseover':  (d)->
-        d3.selectAll("."+d.itemID+" .bgR")
+        d3.selectAll("."+d.itemID+"_bgr")
         .style
             'stroke':fill(d.itemID)
             'opacity': 0.9
       'mouseout':(d) ->
-        d3.selectAll("."+d.itemID+" .bgR")
+        d3.selectAll("."+d.itemID+"_bgr")
         .style
             'opacity': 0
 
@@ -199,17 +228,26 @@ createLabels = (labelNamesSorted) ->
     "font-size":"10pt"
 
 updateDiTop = ->
-  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
+  cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
+
+  cdGroups.exit().remove()
+
   cdGroups.transition().duration(1000)
     .attr("transform",(d,i) -> "translate("+(d.centerPos.x+500)+"," + (d.centerPos.y+500)+")")
 
-  set1Items = getBitIndices(1,cloudData)
-  set2Items = getBitIndices(2,cloudData)
-  set4Items = getBitIndices(4,cloudData)
 
-  moveGroupItems(set1Items,"set1Items",-13,cloudData)
-  moveGroupItems(set2Items,"set2Items",0, cloudData)
-  moveGroupItems(set4Items,"set4Items",+13, cloudData)
+  clouds = cdGroups.enter().append("g").classed("clouds",true)
+  clouds.attr("transform",(d,i) -> "translate("+(d.centerPos.x+500)+"," + (d.centerPos.y+500)+")")
+
+  decorateNewClouds clouds
+
+#  set1Items = getBitIndices(1,cloudData)
+#  set2Items = getBitIndices(2,cloudData)
+#  set4Items = getBitIndices(4,cloudData)
+#
+#  moveGroupItems(set1Items,"set1Items",-13,cloudData)
+#  moveGroupItems(set2Items,"set2Items",0, cloudData)
+#  moveGroupItems(set4Items,"set4Items",+13, cloudData)
 
 
 
@@ -242,16 +280,16 @@ sortAndUpdate = (method)->
   #transform="translate(300,300) rotate(-60)"
   cdGroups.transition().duration(1000)
    .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
-
-  set1Items = getBitIndices(1,cloudData)
-  set2Items = getBitIndices(2,cloudData)
-  set4Items = getBitIndices(4,cloudData)
-  console.log set1Items
-  console.log set2Items
-
-  moveGroupItemsDiscrete(set1Items,"set1Items",-13)
-  moveGroupItemsDiscrete(set2Items,"set2Items",0)
-  moveGroupItemsDiscrete(set4Items,"set4Items",+13)
+#
+#  set1Items = getBitIndices(1,cloudData)
+#  set2Items = getBitIndices(2,cloudData)
+#  set4Items = getBitIndices(4,cloudData)
+#  console.log set1Items
+#  console.log set2Items
+#
+#  moveGroupItemsDiscrete(set1Items,"set1Items",-13)
+#  moveGroupItemsDiscrete(set2Items,"set2Items",0)
+#  moveGroupItemsDiscrete(set4Items,"set4Items",+13)
 
 
 
@@ -263,37 +301,39 @@ drawClouds = ->
   #transform="translate(300,300) rotate(-60)"
   d3.transition(cdGroups)
     .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
-  cdGroups.exit().remove()
+  cdGroups.exit().transition().remove()
   clouds = cdGroups.enter().append("g").classed("clouds",true)
   clouds
     .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
+
+  decorateNewClouds clouds
+
+#  set1Items = getBitIndices(1,cloudData)
+#  set2Items = getBitIndices(2,cloudData)
+#  set4Items = getBitIndices(4,cloudData)
+##
+#  console.log set1Items
+#  addGroupItems(set1Items,"set1Items",2, true)
+#  addGroupItems(set2Items,"set2Items",0,true)
+#  addGroupItems(set4Items,"set4Items",4,true)
+
+
+decorateNewClouds = (clouds) ->
   clouds.append("circle")
-    .attr
-        cx: 0
-        cy: 0
-        r: (d) -> d.recommendedRadius *.8
-    .style
-        'fill':'#fafafa'
-        'stroke': "none"
-        'opacity': (d) ->
-          if d.characteristicValue>0
-            return .3 +.7*d.characteristicValue
-          else
-            return 1
+  .attr
+      cx: 0
+      cy: 0
+      r: (d) -> d.recommendedRadius *.8
+  .style
+      'fill':'#fafafa'
+      'stroke': "none"
+      'opacity': (d) ->
+        if d.characteristicValue>0
+          return .3 +.7*d.characteristicValue
+        else
+          return 1
 
-#  clouds.append("circle").classed("borderCircle",true)
-#    .attr
-#        cx: 0
-#        cy: 0
-#        r: (d) -> d.recommendedRadius *.8
-#    .style
-#        'fill':'none'
-#
-#        'stroke': "#aaaaaa"
-#        'stroke-width': 1 #(d) -> 1+(d.disValue)*5
-
-
-  for sector in [0,2,4]
+  for s in [{sector : 0, name:"set2Items", testFor: 2},{sector : 4, name:"set4Items", testFor: 4},{sector : 2, name:"set1Items", testFor: 1}]
     clouds.append("path")
     .attr
         "d": (d) ->
@@ -305,65 +345,56 @@ drawClouds = ->
           d3.svg.arc()
           .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness)
           .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness)
-          .startAngle((sector+1-arcLength) * (Math.PI/3))
-          .endAngle((sector+1+arcLength) * (Math.PI/3))()
+          .startAngle((s.sector+1-arcLength) * (Math.PI/3))
+          .endAngle((s.sector+1+arcLength) * (Math.PI/3))()
     .style
         'fill':'aaaaaa'
         'stroke': "#ffffff"
         'stroke-width': 1 #(d) -> 1+(d.disValue)*5
 
-#    clouds.append("path")
-#    .attr
-#        "d": (d) ->
-#          thickness = 1+ d.disValue*5*.5
-#          thickness = .9 if isNaN(thickness)
-#          arcLength = .25*(0.5 + d.characteristicValue * 1.5)
-#          arcLength = 0.1 if (isNaN(arcLength) || arcLength<.4)
-#          console.log arcLength
-#          d3.svg.arc()
-#          .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness-1)
-#          .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness+1)
-#          .startAngle((sector+1-arcLength) * (Math.PI/3))
-#          .endAngle((sector+1+arcLength) * (Math.PI/3))()
-#    .style
-#        'fill':'#aaaaaa'
-        'stroke': "none"
-#  clouds.append("path")
-#  .attr
-#      d: (d)->d.unionShape
-#  .style
-#      'fill':'#aaaaaa'
-#      'opacity':.8
+  # CLASS LABEL !!!
+    clusterLabel = clouds.filter((d) -> (d.inSetBitvector & s.testFor) >0)
+    clusterLabel.append("path").classed("clusterLabel",true)
+      .attr
+        "d": (d) ->
+          thickness = 1+ d.disValue *5*.5
+          thickness = 1 if isNaN(thickness)
+          arcLength = .25*(0.5 + d.characteristicValue * 1.5)
+          arcLength = 0.1 if (isNaN(arcLength) || arcLength<.4)
+          console.log arcLength
+          d3.svg.arc()
+          .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness-2)
+          .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness+2)
+          .startAngle((s.sector+1-arcLength) * (Math.PI/3))
+          .endAngle((s.sector+1 +arcLength) * (Math.PI/3))()
+      .style
+          'fill': fill(s.name)
+
+    clusterLabel.append("rect").classed(s.name+"_bgr",true)
+      .attr
+          x: (d) -> -bestRadiusScale(d.recommendedRadius)-2
+          y: (d) -> -bestRadiusScale(d.recommendedRadius)-2
+          width: (d) -> bestRadiusScale(d.recommendedRadius)*2+4
+          height: (d) -> bestRadiusScale(d.recommendedRadius)*2+4
+      .style
+          'fill': 'none'
+          'stroke-width': 3
+          'opcacity': 0
 
 
 
-
+  # and cloud text !!!
   clouds.selectAll("text").data((d) -> d.terms).enter().append("text")
-    .attr("x", (d) ->d.xPos)
-    .attr("y", (d) ->d.yPos)
-    .attr("text-anchor","middle")
-    .style
+  .attr("x", (d) ->d.xPos)
+  .attr("y", (d) ->d.yPos)
+  .attr("text-anchor","middle")
+  .style
       "font-size": (d) -> (d.size*.9)
       'dominant-baseline': 'middle'
 
-    .text((d) -> d.text)
-#  for x in [-1..1]
-#    clouds.append("rect").classed("emptyRect",true)
-#      .attr
-#        x: x*13-5
-#        y: 50
-#        width: 10
-#        height: 10
+  .text((d) -> d.text)
 
 
-  set1Items = getBitIndices(1,cloudData)
-  set2Items = getBitIndices(2,cloudData)
-  set4Items = getBitIndices(4,cloudData)
-#
-  console.log set1Items
-  addGroupItems(set1Items,"set1Items",2, true)
-  addGroupItems(set2Items,"set2Items",0,true)
-  addGroupItems(set4Items,"set4Items",4,true)
 
 
 getBitIndices = (bitmask, cData) ->
