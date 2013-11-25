@@ -5,6 +5,14 @@ configurations = {}
 selectedSet = 0
 selectedTopicSize = 0
 cloudData = []
+topicLabelNumberMapping = {}
+numberFormat = d3.format("0.2f");
+showTextLabels = true
+
+setAttributes = [{sector : 0, name:"set2Items", testFor: 2, text_anchor:"start"},
+  {sector : 4, name:"set4Items", testFor: 4, text_anchor:"end"},
+  {sector : 2, name:"set1Items", testFor: 1, text_anchor:"middle"}]
+
 
 svg = {}
 allClouds = {}
@@ -66,6 +74,17 @@ $("#resetButton").click(->
   svg.attr("transform", "translate(0,0) scale(1)")
 )
 
+$("#showTextLabels").change(->
+  showTextLabels = $("#showTextLabels").prop("checked")
+  d3.selectAll(".labelText").transition()
+    .style
+      "opacity": ->
+        if showTextLabels
+          return 1
+        else
+          return .0001
+
+)
 
 
 @startVis = ->
@@ -187,10 +206,12 @@ createLabels = (labelNamesSorted) ->
 
   itemCount = 1;
   dataLabelEntries = []
+  topicLabelNumberMapping={}
   for k,v of labelNamesSorted
     dataLabelEntries.push
       "itemID" : "set"+itemCount+"Items"
       "itemLabel" : v
+    topicLabelNumberMapping[itemCount] = v
     itemCount*=2
 
   theButtons = groupLabels.selectAll(".colorLabel").data(dataLabelEntries).enter().append("g")
@@ -229,6 +250,12 @@ createLabels = (labelNamesSorted) ->
 
 updateDiTop = ->
   cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
+
+  cdGroups.each(->
+    d3.select(this).select(".setDecoration").remove()
+  )
+  decorateCloudsWithSets cdGroups.append("g").classed("setDecoration",true)
+
 
   cdGroups.exit().remove()
 
@@ -333,7 +360,38 @@ decorateNewClouds = (clouds) ->
         else
           return 1
 
-  for s in [{sector : 0, name:"set2Items", testFor: 2},{sector : 4, name:"set4Items", testFor: 4},{sector : 2, name:"set1Items", testFor: 1}]
+  # and cloud text !!!
+  clouds.selectAll("text").data((d) -> d.terms).enter().append("text")
+  .attr("x", (d) ->d.xPos)
+  .attr("y", (d) ->d.yPos)
+  .attr("text-anchor","middle")
+  .style
+      "font-size": (d) -> (d.size*.9)
+      'dominant-baseline': 'middle'
+  .text((d) -> d.text)
+
+  ## add number labels !!!
+  clouds.append("text")
+    .classed
+      "labelText":true
+      "disLabelText":true
+    .attr
+      "y": (d) -> -bestRadiusScale(d.recommendedRadius)-4
+      "x": 0
+      "text-anchor":"middle"
+      'opacity': if showTextLabels then 1 else .001
+    .text((d) -> numberFormat(d.disValue))
+
+  # SET DECORATION
+
+  sd = clouds.append("g").classed("setDecoration", true)
+  decorateCloudsWithSets(sd)
+
+
+
+
+decorateCloudsWithSets = (clouds)->
+  for s in setAttributes
     clouds.append("path")
     .attr
         "d": (d) ->
@@ -341,7 +399,7 @@ decorateNewClouds = (clouds) ->
           thickness = 1 if isNaN(thickness)
           arcLength = 1
 
-          console.log arcLength
+          #          console.log arcLength
           d3.svg.arc()
           .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness)
           .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness)
@@ -352,48 +410,49 @@ decorateNewClouds = (clouds) ->
         'stroke': "#ffffff"
         'stroke-width': 1 #(d) -> 1+(d.disValue)*5
 
-  # CLASS LABEL !!!
+    # CLASS LABEL !!!
     clusterLabel = clouds.filter((d) -> (d.inSetBitvector & s.testFor) >0)
     clusterLabel.append("path").classed("clusterLabel",true)
-      .attr
+    .attr
         "d": (d) ->
           thickness = 1+ d.disValue *5*.5
           thickness = 1 if isNaN(thickness)
-          arcLength = .25*(0.5 + d.characteristicValue * 1.5)
-          arcLength = 0.1 if (isNaN(arcLength) || arcLength<.4)
-          console.log arcLength
+          #          arcLength =  Math.pow(d.characteristicness[topicLabelNumberMapping[s.testFor]],.5)*.5
+          arcLength =  d.characteristicness[topicLabelNumberMapping[s.testFor]]*.5
+          #          console.log d.topicName,topicLabelNumberMapping[s.testFor],d.characteristicness[topicLabelNumberMapping[s.testFor]],arcLength
+          arcLength = 0.02 if (isNaN(arcLength) || arcLength<.01)
           d3.svg.arc()
           .innerRadius(bestRadiusScale(d.recommendedRadius)-thickness-2)
           .outerRadius(bestRadiusScale(d.recommendedRadius)+thickness+2)
           .startAngle((s.sector+1-arcLength) * (Math.PI/3))
           .endAngle((s.sector+1 +arcLength) * (Math.PI/3))()
-      .style
-          'fill': fill(s.name)
+    .style
+        'fill': fill(s.name)
+
+    clusterLabel.append("text")
+    .classed(s.name+"_textLabel",true)
+    .classed("labelText",true )
+    .attr
+        y:(d) -> -Math.cos((s.sector+1) * (Math.PI/3))*(bestRadiusScale(d.recommendedRadius)+7)
+        x:(d) -> Math.sin((s.sector+1) * (Math.PI/3))*(bestRadiusScale(d.recommendedRadius)+7)
+    .style
+        "text-anchor":s.text_anchor
+        "font-weight":"bold"
+        "font-size":8
+        'fill': fill(s.name)
+        'opacity': if showTextLabels then 1 else .001
+    .text((d) -> numberFormat(d.characteristicness[topicLabelNumberMapping[s.testFor]]))
 
     clusterLabel.append("rect").classed(s.name+"_bgr",true)
-      .attr
-          x: (d) -> -bestRadiusScale(d.recommendedRadius)-2
-          y: (d) -> -bestRadiusScale(d.recommendedRadius)-2
-          width: (d) -> bestRadiusScale(d.recommendedRadius)*2+4
-          height: (d) -> bestRadiusScale(d.recommendedRadius)*2+4
-      .style
-          'fill': 'none'
-          'stroke-width': 3
-          'opcacity': 0
-
-
-
-  # and cloud text !!!
-  clouds.selectAll("text").data((d) -> d.terms).enter().append("text")
-  .attr("x", (d) ->d.xPos)
-  .attr("y", (d) ->d.yPos)
-  .attr("text-anchor","middle")
-  .style
-      "font-size": (d) -> (d.size*.9)
-      'dominant-baseline': 'middle'
-
-  .text((d) -> d.text)
-
+    .attr
+        x: (d) -> -bestRadiusScale(d.recommendedRadius)-2
+        y: (d) -> -bestRadiusScale(d.recommendedRadius)-2
+        width: (d) -> bestRadiusScale(d.recommendedRadius)*2+4
+        height: (d) -> bestRadiusScale(d.recommendedRadius)*2+4
+    .style
+        'fill': 'none'
+        'stroke-width': 3
+        'opcacity': 0
 
 
 
