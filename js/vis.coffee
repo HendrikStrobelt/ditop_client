@@ -32,6 +32,21 @@ SORT_BY_DVALUE = 2
 SORT_BY_CVALUE = 3
 
 fill = d3.scale.category10();
+
+gDragDrag = (d,i) ->
+  d.x += d3.event.dx
+  d.y += d3.event.dy
+  d3.select(this)
+  .attr('x', d.x)
+  .attr('y', d.y)
+  .attr("transform", "translate(" + d.x + "," + d.y + ")")
+
+gDragBehav = d3.behavior.drag().origin((d) -> d)
+  .on("drag", gDragDrag).on("dragstart", -> d3.event.sourceEvent.stopPropagation())
+
+
+
+
 #fill = d3.scale.ordinal().range(["#34CFBE","#FFDB40","#E339A4"])
 #fill = d3.scale.ordinal().range(["#0D77CE","#CE0D77","#77CE0D"])
 #fill = d3.scale.ordinal().range(["#5cc9ff","#ff5cc9","#c9ff5c"])
@@ -259,12 +274,25 @@ updateDiTop = ->
 
   cdGroups.exit().remove()
 
-  cdGroups.transition().duration(1000)
+  cdGroups
+    .attr("x", (d) -> (d.centerPos.x+500))
+    .attr("y", (d) -> (d.centerPos.y+500))
+    .transition().duration(1000)
     .attr("transform",(d,i) -> "translate("+(d.centerPos.x+500)+"," + (d.centerPos.y+500)+")")
-
+  cdGroups.each((d,i) ->
+    d.x = (d.centerPos.x+500)
+    d.y = (d.centerPos.y+500)
+  )
 
   clouds = cdGroups.enter().append("g").classed("clouds",true)
-  clouds.attr("transform",(d,i) -> "translate("+(d.centerPos.x+500)+"," + (d.centerPos.y+500)+")")
+  clouds
+  .attr("x", (d) -> (d.centerPos.x+500))
+  .attr("y", (d) -> (d.centerPos.y+500))
+  .attr("transform",(d,i) -> "translate("+(d.centerPos.x+500)+"," + (d.centerPos.y+500)+")")
+  clouds.each((d,i) ->
+    d.x = (d.centerPos.x+500)
+    d.y = (d.centerPos.y+500)
+  )
 
   decorateNewClouds clouds
 
@@ -307,6 +335,10 @@ sortAndUpdate = (method)->
   #transform="translate(300,300) rotate(-60)"
   cdGroups.transition().duration(1000)
    .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
+  cdGroups.each((d,i) ->
+    d.x = (i%slotsHorizontal*slotSize+ 80)
+    d.y = (i/slotsHorizontal >>0) *slotSize+80
+  )
 #
 #  set1Items = getBitIndices(1,cloudData)
 #  set2Items = getBitIndices(2,cloudData)
@@ -326,12 +358,32 @@ drawClouds = ->
   cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
 
   #transform="translate(300,300) rotate(-60)"
-  d3.transition(cdGroups)
+  cdGroups.each((d,i) ->
+    d.x = (i%slotsHorizontal*slotSize+ 80)
+    d.y = (i/slotsHorizontal >>0) *slotSize+80
+  )
+  cdGroups
+    .transition()
     .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
+
+  #remove old ones
   cdGroups.exit().transition().remove()
+
+  #make new ones
   clouds = cdGroups.enter().append("g").classed("clouds",true)
   clouds
     .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
+  clouds.each((d,i) ->
+    d.x = (i%slotsHorizontal*slotSize+ 80)
+    d.y = (i/slotsHorizontal >>0) *slotSize+80
+  )
+#  clouds.on
+#    "mousedown": ->
+#      svg.call(d3.behavior.zoom().on("zoom",null))
+#      allowZoom = false
+#    "mouseup": ->
+#      allowZoom = true
+#      svg.call(zoomInstance)
 
   decorateNewClouds clouds
 
@@ -386,6 +438,8 @@ decorateNewClouds = (clouds) ->
 
   sd = clouds.append("g").classed("setDecoration", true)
   decorateCloudsWithSets(sd)
+
+  clouds.call(gDragBehav)
 
 
 
