@@ -6,12 +6,18 @@ selectedSet = 0
 selectedTopicSize = 0
 cloudData = []
 topicLabelNumberMapping = {}
+maxValueMap = {}
+
+
 numberFormat = d3.format("0.2f");
 showTextLabels = true
 
-setAttributes = [{sector : 0, name:"set2Items", testFor: 2, text_anchor:"start"},
-  {sector : 4, name:"set4Items", testFor: 4, text_anchor:"end"},
-  {sector : 2, name:"set1Items", testFor: 1, text_anchor:"middle"}]
+setAttributes = [
+  {sector : 0, name:"set2Items", testFor: 2, yOffset:0, text_anchor:"start"},
+  {sector : 4, name:"set4Items", testFor: 4, yOffset:0,text_anchor:"end"},
+  {sector : 2, name:"set1Items", testFor: 1, yOffset:10,text_anchor:"middle"}
+]
+
 
 
 svg = {}
@@ -186,12 +192,13 @@ loadDataSet = (datasetName)->
     jsonp: 'callback',
     success: (resData) ->
       if resData?
+        console.log resData
+        maxValueMap = resData.maxValueMap
         cloudData = []
         for k,v of resData.termGroups
           cloudData.push(v)
 
         createLabels(resData.setNamesSorted)
-        console.log(cloudData)
         $("#workingSymbol").toggleClass("hidden")
         drawClouds()
 
@@ -203,14 +210,16 @@ updateWithDValue = (dValue) ->
     jsonp: 'callback',
     success: (resData) ->
       if resData?
+        maxValueMap = resData.maxValueMap
         cloudData = []
         for k,v of resData.termGroups
           cloudData.push(v)
 
         console.log(cloudData)
         $("#workingSymbol").toggleClass("hidden")
-        updateDiTop()
         createLabels(resData.setNamesSorted)
+        updateDiTop()
+
 
 
 
@@ -432,7 +441,7 @@ decorateNewClouds = (clouds) ->
       "x": 0
       "text-anchor":"middle"
       'opacity': if showTextLabels then 1 else .001
-    .text((d) -> numberFormat(d.disValue))
+    .text((d) -> numberFormat(d.disValue*maxValueMap.disc))
 
   # SET DECORATION
 
@@ -487,15 +496,20 @@ decorateCloudsWithSets = (clouds)->
     .classed(s.name+"_textLabel",true)
     .classed("labelText",true )
     .attr
-        y:(d) -> -Math.cos((s.sector+1) * (Math.PI/3))*(bestRadiusScale(d.recommendedRadius)+7)
-        x:(d) -> Math.sin((s.sector+1) * (Math.PI/3))*(bestRadiusScale(d.recommendedRadius)+7)
+        y:(d) -> -Math.cos((s.sector+1) * (Math.PI/3))*(bestRadiusScale(d.recommendedRadius)+5)+s.yOffset
+        x:(d) -> Math.sin((s.sector+1) * (Math.PI/3))*(bestRadiusScale(d.recommendedRadius)+5)
     .style
         "text-anchor":s.text_anchor
         "font-weight":"bold"
         "font-size":8
         'fill': fill(s.name)
         'opacity': if showTextLabels then 1 else .001
-    .text((d) -> numberFormat(d.characteristicness[topicLabelNumberMapping[s.testFor]]))
+    .text((d) ->
+        value = d.characteristicness[topicLabelNumberMapping[s.testFor]]*maxValueMap.char
+        console.log value
+        console.log numberFormat(value)
+        numberFormat(value)
+      )
 
     clusterLabel.append("rect").classed(s.name+"_bgr",true)
     .attr
@@ -661,4 +675,5 @@ createPieBackground = ->
     "transform": "translate(500,500)"
   .style
     "opacity":0
+
 
