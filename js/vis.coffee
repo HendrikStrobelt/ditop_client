@@ -170,7 +170,8 @@ updateDataSet = ->
 
   topicSizes = configurations[keys[selectedSet]]
   sList = d3.select("#topicSizesList")
-  elementList = sList.selectAll("a").data(topicSizes)
+  elementList = sList.selectAll("a").data(topicSizes, (d,i) -> d+""+i)
+  elementList.exit().remove()
   elementList.enter().append("a")
     .classed("list-group-item",true)
     .classed("active",(d,i) -> i==selectedTopicSize)
@@ -506,8 +507,6 @@ decorateCloudsWithSets = (clouds)->
         'opacity': if showTextLabels then 1 else .001
     .text((d) ->
         value = d.characteristicness[topicLabelNumberMapping[s.testFor]]*maxValueMap.char
-        console.log value
-        console.log numberFormat(value)
         numberFormat(value)
       )
 
