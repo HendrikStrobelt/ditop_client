@@ -7,6 +7,8 @@ selectedTopicSize = 0
 cloudData = []
 topicLabelNumberMapping = {}
 maxValueMap = {}
+actualView = "orig" #valid avlues are: orig, sortChar, sortDisc, sortGroup, ditop
+
 
 
 numberFormat = d3.format("0.2f");
@@ -31,7 +33,7 @@ offsetVisX = 80
 offsetVisY = 80
 
 slotsHorizontal = 6
-slotSize = 150
+slotSize = 180
 
 SORT_BY_GROUP = 1
 SORT_BY_DVALUE = 2
@@ -84,8 +86,6 @@ $("#sortCButton").click(->
   sortAndUpdate(SORT_BY_CVALUE)
 )
 $("#ditopButton").click(->
-  svg.selectAll(".arc").transition().duration(500).style("opacity",1)
-  svg.selectAll(".emptyRect").transition().duration(500).style("opacity",0)
 #  svg.selectAll(".borderCircle").transition().style("stroke","#666666")
   updateDiTop()
 )
@@ -115,7 +115,7 @@ $("#showTextLabels").change(->
     .append("g")
 
 #  create grid lines
-  yaxis = d3.range(0,height,50)
+  yaxis = d3.range(offsetVisY-slotSize/6,height,slotSize/3)
   svg.selectAll("line.vertical")
   .data(yaxis)
   .enter().append("svg:line")
@@ -201,7 +201,8 @@ loadDataSet = (datasetName)->
 
         createLabels(resData.setNamesSorted)
         $("#workingSymbol").toggleClass("hidden")
-        drawClouds()
+        sortAndUpdate(SORT_BY_DVALUE)
+#        drawClouds()
 
 updateWithDValue = (dValue) ->
   $.ajax
@@ -219,7 +220,14 @@ updateWithDValue = (dValue) ->
         console.log(cloudData)
         $("#workingSymbol").toggleClass("hidden")
         createLabels(resData.setNamesSorted)
-        updateDiTop()
+
+        switch actualView
+          when "ditop" then updateDiTop()
+          when "sortGroup" then sortAndUpdate(SORT_BY_GROUP)
+          when "sortChar" then sortAndUpdate(SORT_BY_CVALUE)
+          when "sortDisc" then sortAndUpdate(SORT_BY_DVALUE)
+          else updateDiTop()
+
 
 
 
@@ -274,15 +282,23 @@ createLabels = (labelNamesSorted) ->
     "font-size":"10pt"
 
 updateDiTop = ->
+  if not (actualView=="ditop")
+    actualView="ditop"
+    svg.selectAll(".arc").transition().duration(500).style("opacity",1)
+    svg.selectAll(".emptyRect").transition().duration(500).style("opacity",0)
+
   cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
 
-  cdGroups.each(->
+  cdGroups.each((d) ->
     d3.select(this).select(".setDecoration").remove()
+    actualRadius = d3.select(this).select("circle").attr("r")
+    d.recommendedRadius = bestRadiusScaleInv(actualRadius)
+    console.log d.recommendedRadius,actualRadius,d.terms
   )
+
   decorateCloudsWithSets cdGroups.append("g").classed("setDecoration",true)
-
-
   cdGroups.exit().remove()
+
 
   cdGroups
     .attr("x", (d) -> (d.centerPos.x+500))
@@ -306,6 +322,8 @@ updateDiTop = ->
 
   decorateNewClouds clouds
 
+
+
 #  set1Items = getBitIndices(1,cloudData)
 #  set2Items = getBitIndices(2,cloudData)
 #  set4Items = getBitIndices(4,cloudData)
@@ -317,10 +335,13 @@ updateDiTop = ->
 
 
 sortAndUpdate = (method)->
+  if not (actualView.indexOf("sort",0) == 0)
+    svg.selectAll(".arc").transition().style("opacity",0)
   if (method==SORT_BY_GROUP)
     cloudData.sort((a,b) ->
       a.inSetBitvector - b.inSetBitvector
     )
+    actualView="sortGroup"
   else if (method==SORT_BY_DVALUE)
     cloudData.sort((a,b) ->
       aD = a.disValue
@@ -332,6 +353,7 @@ sortAndUpdate = (method)->
       return 1 if test > 0
       return 0
     )
+    actualView="sortDisc"
   else if (method==SORT_BY_CVALUE)
     cloudData.sort((a,b) ->
       test = b.characteristicValue - a.characteristicValue
@@ -339,7 +361,8 @@ sortAndUpdate = (method)->
       return 1 if test > 0
       return 0
     )
-  cdGroups = svg.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
+    actualView="sortChar"
+  cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
 
 
   #transform="translate(300,300) rotate(-60)"
@@ -349,22 +372,42 @@ sortAndUpdate = (method)->
     d.x = (i%slotsHorizontal*slotSize+ 80)
     d.y = (i/slotsHorizontal >>0) *slotSize+80
   )
-#
-#  set1Items = getBitIndices(1,cloudData)
-#  set2Items = getBitIndices(2,cloudData)
-#  set4Items = getBitIndices(4,cloudData)
-#  console.log set1Items
-#  console.log set2Items
-#
-#  moveGroupItemsDiscrete(set1Items,"set1Items",-13)
-#  moveGroupItemsDiscrete(set2Items,"set2Items",0)
-#  moveGroupItemsDiscrete(set4Items,"set4Items",+13)
 
+  #remove old ones
+  cdGroups.exit().transition().remove()
 
+  #make new ones
+  clouds = cdGroups.enter().append("g").classed("clouds",true)
+  clouds
+  .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
+  .style
+      opacity: 0.0001
+  clouds.each((d,i) ->
+    d.x = (i%slotsHorizontal*slotSize+ 80)
+    d.y = (i/slotsHorizontal >>0) *slotSize+80
+  )
 
-
+  decorateNewClouds clouds
+  clouds
+  .transition()
+  .style
+    opacity:1
 
 drawClouds = ->
+  # sort by default !!
+  cloudData.sort((a,b) ->
+    aD = a.disValue
+    aD = 0 if isNaN(aD)
+    bD = b.disValue
+    bD = 0 if isNaN(bD)
+    test = bD-aD
+    return -1 if test < 0
+    return 1 if test > 0
+    return 0
+  )
+  actualView="sortDisc"
+
+
   cdGroups = allClouds.selectAll(".clouds").data(cloudData, (d) -> d.topicName)
 
   #transform="translate(300,300) rotate(-60)"
@@ -383,28 +426,18 @@ drawClouds = ->
   clouds = cdGroups.enter().append("g").classed("clouds",true)
   clouds
     .attr("transform",(d,i) -> "translate("+(i%slotsHorizontal*slotSize+ 80)+"," + ((i/slotsHorizontal >>0) *slotSize+80)+")")
+    .style
+      opacity: 0.0001
   clouds.each((d,i) ->
     d.x = (i%slotsHorizontal*slotSize+ 80)
     d.y = (i/slotsHorizontal >>0) *slotSize+80
   )
-#  clouds.on
-#    "mousedown": ->
-#      svg.call(d3.behavior.zoom().on("zoom",null))
-#      allowZoom = false
-#    "mouseup": ->
-#      allowZoom = true
-#      svg.call(zoomInstance)
 
   decorateNewClouds clouds
-
-#  set1Items = getBitIndices(1,cloudData)
-#  set2Items = getBitIndices(2,cloudData)
-#  set4Items = getBitIndices(4,cloudData)
-##
-#  console.log set1Items
-#  addGroupItems(set1Items,"set1Items",2, true)
-#  addGroupItems(set2Items,"set2Items",0,true)
-#  addGroupItems(set4Items,"set4Items",4,true)
+  clouds
+  .transition()
+  .style
+    opacity:1
 
 
 decorateNewClouds = (clouds) ->
@@ -412,7 +445,7 @@ decorateNewClouds = (clouds) ->
   .attr
       cx: 0
       cy: 0
-      r: (d) -> d.recommendedRadius *.8
+      r: (d) -> bestRadiusScale(d.recommendedRadius)
   .style
       'fill':'#fafafa'
       'stroke': "none"
@@ -644,6 +677,7 @@ addGroupItems = (setItems, className, sector, clearAll = false) ->
 
 bestRadius = (pos) -> bestRadiusScale cloudData[pos].recommendedRadius
 bestRadiusScale = (r) -> r*.8
+bestRadiusScaleInv = (r) -> r/.8
 
 
 createPieBackground = ->
