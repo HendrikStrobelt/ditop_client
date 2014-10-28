@@ -1,5 +1,5 @@
 
-serverURL = "http://localhost:8080/DiTopWeb/DiTopServlet"
+serverURL = "http://localhost:8080/ditop"
 actualDataset = ""
 configurations = {}
 selectedSet = 0
@@ -45,19 +45,15 @@ gDragBehav = d3.behavior.drag().origin((d) -> d)
   .on("drag", gDragDrag).on("dragstart", -> d3.event.sourceEvent.stopPropagation())
 
 
-
-
-#fill = d3.scale.ordinal().range(["#34CFBE","#FFDB40","#E339A4"])
-#fill = d3.scale.ordinal().range(["#0D77CE","#CE0D77","#77CE0D"])
-#fill = d3.scale.ordinal().range(["#5cc9ff","#ff5cc9","#c9ff5c"])
 zoomInstance = {}
 
 $("#showButton").click( ->
   svg.selectAll(".arc").transition().style("opacity",0)
   key = Object.keys(configurations)[selectedSet]
   topicSize = configurations[key][selectedTopicSize]
+  console.log key, topicSize
   $("#workingSymbol").toggleClass("hidden")
-  loadDataSet(key+"_"+topicSize)
+  loadDataSet(key+"/"+topicSize)
 )
 
 $("#updateDValue").click( ->
@@ -101,6 +97,8 @@ $("#showTextLabels").change(->
 
 )
 
+$("#uploadForm").attr("action", serverURL+"/upload")
+
 
 @startVis = ->
   zoomInstance = d3.behavior.zoom().scaleExtent([.1, 8]).on("zoom", -> zoom())
@@ -128,10 +126,10 @@ $("#showTextLabels").change(->
   allAnnotations = svg.append("g").attr("id","allAnnotations")
 
   $.ajax
-    url: serverURL,
+    url: serverURL+"/datasets",
   #  data: "q="+encodeURIComponent(inputData.toLowerCase())+"&rows=0&facet=true&facet.query=p1:1&facet.query=p2:1&facet.query=p3:1&facet.query=p4:1&facet.query=p5:1&facet.query=p6:1&facet.query=p7:1&facet.query=p8:1&facet.query=p9:1&facet.query=p10:1&facet.query=p11:1&facet.query=p12:1&facet.query=p13:1&facet.query=p14:1&facet.query=p15:1&facet.query=p16:1&facet.field=text&facet.field=sp&facet.field=ngram&facet.sort=count&wt=json",
-    dataType: 'jsonp',
-    jsonp: 'callback',
+    dataType: 'json',
+#    jsonp: 'callback',
     success: (resData) ->
       if resData?
         configurations = resData
@@ -147,42 +145,38 @@ zoom = ->
 updateDataSet = ->
   keys = Object.keys(configurations);
   dList = d3.select("#datasetList")
-  dList.clear
-  elementList= dList.selectAll("a").data(keys)
-  elementList.classed("active",(d,i) -> i==selectedSet)
-  elementList.enter().append("a")
-    .classed("list-group-item",true)
-    .classed("active",(d,i) -> i==selectedSet)
-    .on("click", (d,i) ->
-          selectedSet = i
-          selectedTopicSize =0
-          updateDataSet()
-        )
-    .text((d,i) -> d )
+
+  elementList= dList.selectAll("option").data(keys)
+  elementList.exit().remove()
+  elementList.enter().append("option").text((d,i) -> d )
+  dList.on("change", ->
+    selectedSet = this.selectedIndex
+    selectedTopicSize = 0
+    updateDataSet()
+  )
 
 
 
   topicSizes = configurations[keys[selectedSet]]
   sList = d3.select("#topicSizesList")
-  elementList = sList.selectAll("a").data(topicSizes)
-  elementList.enter().append("a")
-    .classed("list-group-item",true)
-    .classed("active",(d,i) -> i==selectedTopicSize)
-    .on("click", (d,i) ->
-          selectedTopicSize = i
-          updateDataSet()
-      )
-    .text((d,i) -> d )
-  elementList.classed("active",(d,i) -> i==selectedTopicSize)
+  sList
+
+  elementList = sList.selectAll("option").data(topicSizes)
+  elementList.exit().remove()
+  elementList.enter().append("option").text((d,i) -> d )
+  sList.on("change", ->
+    selectedTopicSize = this.selectedIndex
+  )
+
+
 
 loadDataSet = (datasetName)->
-  console.log(datasetName)
   actualDataset=datasetName
 #http://localhost:8080/DiTopWeb/DiTopServlet?dataset=New3000_40
   $.ajax
-    url: serverURL,
-    data: "dataset="+datasetName,
-    dataType: 'jsonp',
+    url: serverURL+"/dataset/"+datasetName,
+#    data: "/dataset/"+datasetName,
+    dataType: 'json',
     jsonp: 'callback',
     success: (resData) ->
       if resData?
@@ -191,15 +185,14 @@ loadDataSet = (datasetName)->
           cloudData.push(v)
 
         createLabels(resData.setNamesSorted)
-        console.log(cloudData)
         $("#workingSymbol").toggleClass("hidden")
         drawClouds()
 
 updateWithDValue = (dValue) ->
   $.ajax
-    url: serverURL,
-    data: "dataset="+actualDataset+"&dValue="+dValue,
-    dataType: 'jsonp',
+    url: serverURL+"/dataset/"+actualDataset,
+    data: "discValue="+dValue,
+    dataType: 'json',
     jsonp: 'callback',
     success: (resData) ->
       if resData?
@@ -460,7 +453,7 @@ decorateCloudsWithSets = (clouds)->
           .startAngle((s.sector+1-arcLength) * (Math.PI/3))
           .endAngle((s.sector+1+arcLength) * (Math.PI/3))()
     .style
-        'fill':'aaaaaa'
+        'fill':"#aaaaaa"
         'stroke': "#ffffff"
         'stroke-width': 1 #(d) -> 1+(d.disValue)*5
 

@@ -1,0 +1,12 @@
+svg text {
+  font: Arial 12pt; }
+
+.emptyRect {
+  fill: none;
+  stroke: #dddddd;
+  stroke-width: 1; }
+
+.disLabelText {
+  font-weight: bold;
+  font-size: 9pt;
+  fill: #999999; }

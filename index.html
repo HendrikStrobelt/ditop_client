@@ -2,7 +2,8 @@
 <!--[if lt IE 7]>      <html class="no-js lt-ie9 lt-ie8 lt-ie7"> <![endif]-->
 <!--[if IE 7]>         <html class="no-js lt-ie9 lt-ie8"> <![endif]-->
 <!--[if IE 8]>         <html class="no-js lt-ie9"> <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js"> <!--<![endif]-->
+<!--[if gt IE 8]><!-->
+<html class="no-js" xmlns="http://www.w3.org/1999/html"> <!--<![endif]-->
     <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
@@ -10,18 +11,22 @@
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width">
 
-        <link rel="stylesheet" href="css/bootstrap.min.css">
+        <!-- Latest compiled and minified CSS -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+
+        <!-- Optional theme -->
+        <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap-theme.min.css">
+
+
         <style>
             body {
                 padding-top: 50px;
                 padding-bottom: 20px;
             }
         </style>
-        <link rel="stylesheet" href="css/bootstrap-theme.min.css">
-        <link rel="stylesheet" href="css/main.css">
 
         <script src="js/vendor/modernizr-2.6.2-respond-1.1.0.min.js"></script>
-        <script src="js/d3.v3.min.js"></script>
+        <script src="js/vendor/d3.v3.min.js"></script>
     </head>
     <body>
         <!--[if lt IE 7]>
@@ -34,21 +39,32 @@
       <!-- Example row of columns -->
       <div class="row hidden-print">
         <div class="col-lg-2 col-xs-4 col-md-2 ">
-          <h4>Dataset:</h4>
-            <div class="list-group" id="datasetList">
-
-            </div>
+            <p><label> DataSet </label>
+            <select class="form-control" id="datasetList"></select>
+            <!--<div class="list-group" id="datasetList">-->
+            </p>
+            <p>
+                <label> No. topics</label>
+                <select class="form-control" id="topicSizesList"></select>
+            </p>
+            <!--<div class="list-group" id="topicSizesList">-->
+            <!--<p></p>-->
+            <p><button type="button" class="btn btn-default btn-sm" id="showButton">load</button></p>
+            <!--</div>-->
         </div>
-          <div class="col-lg-2 col-xs-4 col-md-2">
-              <h4>No. Topics</h4>
-              <div class="list-group" id="topicSizesList">
-
-              </div>
-          </div>
           <div class="col-md-1">
-             <p><button type="button" class="btn btn-default btn-sm" id="showButton">load</button></p>
-              <p><button type="button" class="btn btn-danger btn-sm" id="resetButton">reset</button></p>
+
+
           </div>
+          <div class="col-lg-2 col-xs-4 col-md-2">
+                <label>view</label>
+
+                <p><input type="checkbox" checked="checked" id="showTextLabels" value="true"> show values</input></p>
+
+                <p><button type="button" class="btn btn-danger btn-sm" id="resetButton">reset Zoom</button></p>
+
+          </div>
+
           <div class="col-md-3">
               <div class="form-group">
                   <label for="dThresh">discr. threshold</label>
@@ -56,13 +72,10 @@
               </div>
               <button type="button" class="btn btn-default btn-sm" id="updateDValue">update</button>
                  <span class = "glyphicon glyphicon-refresh hidden" id="workingSymbol"></span>
-              <div class="checkbox">
-                  <label>
-                      <input type="checkbox" checked="checked" id="showTextLabels" value="true"> show values
-                  </label>
-              </div>
+
           </div>
           <div class="col-md-2">
+              <label>sorting</label>
               <p><button type="button" class="btn btn-default btn-sm" id="sortButton">sort by groups</button></p>
               <p><button type="button" class="btn btn-default btn-sm" id="sortDButton">sort by dValue</button></p>
               <p><button type="button" class="btn btn-default btn-sm" id="sortCButton">sort by cValue</button></p>
@@ -70,10 +83,10 @@
           </div>
 
           <div class ="col-md-2">
-              <form method="POST" enctype="multipart/form-data" action="http://localhost:8080/DiTopWeb/UploadServlet">
+              <form method="POST" enctype="multipart/form-data" id="uploadForm" action="http://localhost:8080/ditop/upload">
                   <div class="form-group">
                       <label for="inputFileField">Upload corpus</label>
-                  <input type="file" class="btn-sm" id="inputFileField" name="upfile"><br/>
+                  <input type="file" class="btn-sm" id="inputFileField" name="file"><br/>
                   </div>
                   <input type="submit" class="btn btn-default" value="Upload">
               </form>
@@ -100,12 +113,11 @@
       <footer>
         <p>&copy; DiTopView on http://abc.def.gh</p>
       </footer>
-    </div> <!-- /container -->        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
-        <script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+    </div> <!-- /container -->
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
 
-        <script src="js/vendor/bootstrap.min.js"></script>
-
-        <script src="js/main.js"></script>
+        <!-- Latest compiled and minified JavaScript -->
+        <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
 
         <script src="js/vis.js"></script>
         <script>
