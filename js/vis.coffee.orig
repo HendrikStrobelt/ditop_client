@@ -8,8 +8,12 @@ cloudData = []
 topicLabelNumberMapping = {}
 maxValueMap = {}
 actualView = "orig" #valid avlues are: orig, sortChar, sortDisc, sortGroup, ditop
+
+
+
 numberFormat = d3.format("0.2f");
 showTextLabels = true
+
 setAttributes = [
   {sector : 0, name:"set2Items", testFor: 2, yOffset:0, text_anchor:"start"},
   {sector : 4, name:"set4Items", testFor: 4, yOffset:0,text_anchor:"end"},
@@ -158,8 +162,10 @@ updateDataSet = ->
   )
 
 
+
   topicSizes = configurations[keys[selectedSet]]
   sList = d3.select("#topicSizesList")
+<<<<<<< HEAD
   sList
 
   elementList = sList.selectAll("option").data(topicSizes)
@@ -169,6 +175,20 @@ updateDataSet = ->
     selectedTopicSize = this.selectedIndex
   )
 
+
+=======
+  elementList = sList.selectAll("a").data(topicSizes, (d,i) -> d+""+i)
+  elementList.exit().remove()
+  elementList.enter().append("a")
+    .classed("list-group-item",true)
+    .classed("active",(d,i) -> i==selectedTopicSize)
+    .on("click", (d,i) ->
+          selectedTopicSize = i
+          updateDataSet()
+      )
+    .text((d,i) -> d )
+  elementList.classed("active",(d,i) -> i==selectedTopicSize)
+>>>>>>> master2
 
 loadDataSet = (datasetName)->
   actualDataset=datasetName
@@ -308,6 +328,7 @@ updateDiTop = ->
   )
 
   decorateNewClouds clouds
+
 
 
 #  set1Items = getBitIndices(1,cloudData)
@@ -590,7 +611,6 @@ addGroupItems = (setItems, className, sector, clearAll = false) ->
 
   allItems = setVisItems.selectAll(".setItem").data(setItems, (d) -> d.name)
   allItems.exit().remove()
-
 #  allItems.transition()
 #    .style
 #      opacity:0
